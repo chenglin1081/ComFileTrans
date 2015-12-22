@@ -16,25 +16,25 @@ FFF = 0x0E
 
 @log
 def processSSN(session, stream):
-    '''
+    """
     收到启动会话指令，返回确认启动会话指令
-    '''
+    """
     return wrap(session.sid, ASN)
 
 
 @log
 def processASN(session, stream):
-    '''
+    """
     收到会话启动确认指令，开始发送文件信息
-    '''
+    """
     return wrap(session.sid, TFI, i2s(session.fullsize, FILESIZEBYTE), session.filename.encode())
 
 
 @log
 def processTFI(session, stream):
-    '''
+    """
     收到传送文件信息指令，保存文件信息，确认文件信息
-    '''
+    """
     if session.receivefile(stream[DATASTARTPOINT + FILESIZEBYTE:].decode(),
                            s2i(stream[DATASTARTPOINT:DATASTARTPOINT + FILESIZEBYTE])):
         return wrap(session.sid, RFB, i2s(session.tmpnextblock, FILEBLOCKNUMBYTE))
@@ -44,18 +44,18 @@ def processTFI(session, stream):
 
 @log
 def processEXF(session, stream):
-    '''
+    """
     收到文件存在指令
-    '''
+    """
     session.settimeout()
     g.sessionpool.onexists(session)
 
 
 @log
 def processRFB(session, stream):
-    '''
+    """
     收到请求发送文件块
-    '''
+    """
     blocknum = s2i(stream[DATASTARTPOINT:DATASTARTPOINT + FILEBLOCKNUMBYTE])
     data = session.readblock(blocknum)
     if data:
@@ -65,9 +65,9 @@ def processRFB(session, stream):
 
 @log
 def processTFB(session, stream):
-    '''
+    """
     收到文件块
-    '''
+    """
     num = s2i(stream[DATASTARTPOINT:DATASTARTPOINT + FILEBLOCKNUMBYTE])
     data = stream[DATASTARTPOINT + FILEBLOCKNUMBYTE:]
     if session.writeblock(num, data):
@@ -78,9 +78,9 @@ def processTFB(session, stream):
 
 @log
 def processFFL(session, stream):
-    '''
+    """
     收到结束文件传输
-    '''
+    """
     if session.completereceive():
         g.sessionpool.onsuccess(session)
         return wrap(session.sid, SFF)
@@ -89,26 +89,26 @@ def processFFL(session, stream):
 
 @log
 def processSFF(session, stream):
-    '''
+    """
     收到文件正确接收指令
-    '''
+    """
     session.close()
     g.sessionpool.onsuccess(session)
 
 
 @log
 def processFFF(session, stream):
-    '''
+    """
     收到文件接收错误指令
-    '''
+    """
     session.close()
 
 
 @log
 def processECR(session, stream):
-    '''
+    """
     收到CRC校验错误指令，则重新发送会话缓存字符串流
-    '''
+    """
     g.sessionpool.occurCrcErr()
     return session.cache
 
