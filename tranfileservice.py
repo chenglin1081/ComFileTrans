@@ -8,7 +8,7 @@ from client import initialize, close, transfer_files, getLogger
 
 
 class TranFileService(win32serviceutil.ServiceFramework):
-    '传送文件的windows服务类'
+    """传送文件的windows服务类"""
     _svc_name_ = 'TranFileService'
     _svc_display_name_ = 'TranFileService'
     _svc_description_ = '通过串口实时传输文件'
