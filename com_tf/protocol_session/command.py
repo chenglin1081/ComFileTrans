@@ -1,17 +1,18 @@
 # -*- coding: utf-8 -*-
 
 from .streamhelper import *
-from protocol_transfer import g, log
+from ..protocol_transfer import s2i, i2s
+from ..lib.log import log
 
 SSN = 0x01
 ASN = 0x02
-TFI = 0x04
-EXF = 0x07
-RFB = 0x08
-TFB = 0x09
-FFL = 0x0C
-SFF = 0x0D
-FFF = 0x0E
+TFI = 0x03
+EXF = 0x04
+RFB = 0x05
+TFB = 0x06
+FFL = 0x07
+SFF = 0x08
+FFF = 0x09
 
 
 @log
@@ -47,8 +48,9 @@ def processEXF(session, stream):
     """
     收到文件存在指令
     """
+    from ..protocol_session import SessionPool
     session.settimeout()
-    g.sessionpool.onexists(session)
+    SessionPool().onexists(session)
 
 
 @log
@@ -82,7 +84,8 @@ def processFFL(session, stream):
     收到结束文件传输
     """
     if session.completereceive():
-        g.sessionpool.onsuccess(session)
+        from ..protocol_session import SessionPool
+        SessionPool().onsuccess(session)
         return wrap(session.sid, SFF)
     return wrap(session.sid, FFF)
 
@@ -92,8 +95,9 @@ def processSFF(session, stream):
     """
     收到文件正确接收指令
     """
+    from ..protocol_session import SessionPool
     session.close()
-    g.sessionpool.onsuccess(session)
+    SessionPool().onsuccess(session)
 
 
 @log
@@ -104,22 +108,14 @@ def processFFF(session, stream):
     session.close()
 
 
-@log
-def processECR(session, stream):
-    """
-    收到CRC校验错误指令，则重新发送会话缓存字符串流
-    """
-    g.sessionpool.occurCrcErr()
-    return session.cache
-
-
-cfmap = {}
-cfmap[SSN] = (processSSN, 'receive start session command')
-cfmap[ASN] = (processASN, 'remote session created')
-cfmap[TFI] = (processTFI, 'get file info')
-cfmap[EXF] = (processEXF, 'remote file exists')
-cfmap[RFB] = (processRFB, 'remote want file block')
-cfmap[TFB] = (processTFB, 'get file block')
-cfmap[FFL] = (processFFL, 'remote transfer end')
-cfmap[SFF] = (processSFF, 'remote receive file success')
-cfmap[FFF] = (processFFF, 'remote receive file failed')
+cfmap = {
+    SSN: (processSSN, 'receive start session command'),
+    ASN: (processASN, 'remote session created'),
+    TFI: (processTFI, 'get file info'),
+    EXF: (processEXF, 'remote file exists'),
+    RFB: (processRFB, 'remote want file block'),
+    TFB: (processTFB, 'get file block'),
+    FFL: (processFFL, 'remote transfer end'),
+    SFF: (processSFF, 'remote receive file success'),
+    FFF: (processFFF, 'remote receive file failed')
+}

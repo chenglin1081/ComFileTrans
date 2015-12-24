@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import protocol_transfer as pt
-from protocol_transfer import i2s, s2i
+from ..protocol_transfer import i2s, wrap as pt_wrap
 
 
 def wrap(sid, command, *data):
-    return pt.wrap(i2s(sid), i2s(command), *data)
+    return pt_wrap(i2s(sid), i2s(command), *data)
 
 
 def getsid(stream):

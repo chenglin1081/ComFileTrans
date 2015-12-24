@@ -1,18 +1,20 @@
 # -*- coding: utf-8 -*-
 
+from ..lib.singleton import Singleton
+from ..lib.com import Com
+from ..lib.log import Log
 from threading import Thread
 from queue import Queue
 from collections import deque
 from time import time
-from .service import g
-from .log import getLogger
 
 
-class Sender(Thread):
-    EXIT = 0
-
+class Sender(Thread, metaclass=Singleton):
     def __init__(self):
         super(Sender, self).__init__()
+        self.device = Com()
+        self.logger = Log().logger
+        self.EXIT = 0
         self.name = 'com_send'
         self.setDaemon(False)
         self.data = None
@@ -23,11 +25,11 @@ class Sender(Thread):
 
     @property
     def cansend(self):
-        return self._cansend and self.data and g.device.open()
+        return self._cansend and self.data and self.device.open()
 
     @cansend.setter
     def cansend(self, value):
-        getLogger().debug('set cansend = %s' % value)
+        self.logger.debug('set cansend = %s' % value)
         self._cansend = value
         self.send(True)
 
@@ -37,17 +39,17 @@ class Sender(Thread):
     def loop(self):
         while True:
             obj = self.channel.get()
-            if obj == Sender.EXIT:
-                getLogger().info('remove sender thread')
+            if obj == self.EXIT:
+                self.logger.info('remove sender thread')
                 return
-            if time() - self.sendtime > g.device.timeout:
+            if time() - self.sendtime > self.device.timeout:
                 self._cansend = True
             if isinstance(obj, bytes):
                 self.que.append(obj)
-                getLogger().debug('sender channel get [%s] bytes' % len(obj))
+                self.logger.debug('sender channel get [%s] bytes' % len(obj))
             self.data = self.data or (self.que.popleft() if self.que else None)
             if self.cansend:
-                if g.device.write(self.data) == 0:
+                if self.device.write(self.data) == 0:
                     self.clear()
                 self._cansend = False
                 self.data = None
@@ -56,15 +58,12 @@ class Sender(Thread):
     def clear(self):
         self.data = None
         self.que.clear()
-        g.device.close()
+        self.device.close()
         self._cansend = True
         self.sendtime = time()
 
     def close(self):
-        self.send(Sender.EXIT)
+        self.send(self.EXIT)
 
     def run(self):
         self.loop()
-
-
-g.set('sender', Sender())

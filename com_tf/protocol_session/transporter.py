@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import os
-from protocol_transfer import g
+from .sessionpool import SessionPool
 
 
 def transfer(fullname):
@@ -10,16 +10,18 @@ def transfer(fullname):
     sending = [os.path.basename(n).lower() for n in getoutfiles()]
     if filename.lower() in sending:
         return
-    session = g.sessionpool.createSession()
+    session = SessionPool().createSession()
     session.transferfile(fullname)
     return session
 
 
 def getoutfiles():
-    g.sessionpool.delTimeoutSession()
-    return [session.fullname for session in g.sessionpool.values if session.issender]
+    pool = SessionPool()
+    pool.delTimeoutSession()
+    return [session.fullname for session in pool.values if session.issender]
 
 
 def getinfiles():
-    g.sessionpool.delTimeoutSession()
-    return [session.fullname for session in g.sessionpool.values if not session.issender]
+    pool = SessionPool()
+    pool.delTimeoutSession()
+    return [session.fullname for session in pool.values if not session.issender]

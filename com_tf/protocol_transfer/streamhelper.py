@@ -11,7 +11,7 @@ def i2s(num, length=0):
     ns = []
     while True:
         ns.append(num & 0xff)
-        num = num >> 8
+        num >>= 8
         if not num:
             break
     return bytes(ns).ljust(length, b'\x00')
@@ -44,9 +44,3 @@ def getdata(stream):
 
 TICK = i2s(10000, 2)
 ERROR = i2s(10001, 2)
-
-if __name__ == '__main__':
-    stream = b'jiangce'
-    ws = wrap(stream)
-    assert getlength(ws) == len(ws)
-    assert checkcrc(ws)

@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 
-from threading import Thread
-from .service import g
+from ..lib.singleton import Singleton
+from ..lib.com import Com
+from ..lib.log import Log
+from .sender import Sender
 from .streamhelper import TICK, ERROR, s2i, checkcrc
-from .log import getLogger
+from threading import Thread
 
 
-class Receiver(Thread):
+class Receiver(Thread, metaclass=Singleton):
     def __init__(self):
         super(Receiver, self).__init__()
+        self.device = Com()
+        self.sender = Sender()
+        self.logger = Log().logger
         self.name = 'com_receiver'
         self.setDaemon(False)
         self._running = True
@@ -21,43 +26,43 @@ class Receiver(Thread):
 
     def loop(self):
         while self._running:
-            head = g.device.read(2)
+            head = self.device.read(2)
             if not self._running:
                 return
             if not head:
                 continue
             if len(head) != 2:
-                getLogger().error('device read head error')
+                self.logger.error('device read head error')
                 self.clear()
             else:
                 length = s2i(head)
                 if length == 10000:
-                    getLogger().debug('get a TICK')
-                    g.sender.cansend = True
+                    self.logger.debug('get a TICK')
+                    self.sender.cansend = True
                 elif length < 5 or length > 10000:
-                    getLogger().error('device read error')
+                    self.logger.error('device read error')
                     self.clear()
                 else:
-                    stream = head + g.device.read(length - 2)
+                    stream = head + self.device.read(length - 2)
                     if not self._running:
                         return
-                    getLogger().debug('device get [%s] bytes' % len(stream))
+                    self.logger.debug('device get [%s] bytes' % len(stream))
                     if length == len(stream):
                         if checkcrc(stream):
-                            getLogger().debug('device send TICK')
-                            g.device.write(TICK)
+                            self.logger.debug('device send TICK')
+                            self.device.write(TICK)
                             if self.callback:
                                 self.callback(stream)
                         else:
-                            getLogger().error('device read crc error')
+                            self.logger.error('device read crc error')
                             self.clear()
                     else:
-                        getLogger().error('length error: head[%s] <> receive[%s]' % (length, len(stream)))
+                        self.logger.error('length error: head[%s] <> receive[%s]' % (length, len(stream)))
                         self.clear()
 
     def clear(self):
-        g.device.write(ERROR)
-        g.device.close()
+        self.device.write(ERROR)
+        self.device.close()
         if self.errcallback:
             self.errcallback()
 
@@ -66,6 +71,3 @@ class Receiver(Thread):
 
     def run(self):
         self.loop()
-
-
-g.set('receiver', Receiver())

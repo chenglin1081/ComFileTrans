@@ -3,7 +3,7 @@
 import os
 
 
-class FileBase(object):
+class FileBase:
     def __init__(self):
         self.file = None
         self.size = 0

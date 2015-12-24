@@ -2,24 +2,31 @@
 
 import os
 import traceback
-from time import time, sleep
-from protocol_transfer import g, getLogger
+from time import time
 from .command import *
 from .fileprocess import FileReader, FileWriter
+from ..lib.env import Environment
+from ..lib.log import Log
+from ..protocol_transfer import Sender
 
 
-class Session(object):
+class Session:
     BLOCK = 4000
     TIMEOUT = 10
 
     def __init__(self, sid):
+        from ..protocol_session import SessionPool
+        self.env = Environment()
+        self.sessionpool = SessionPool()
+        self.sender = Sender()
+        self.logger = Log().logger
         self.resetovertime()
         self.sid = sid
         self.fileproc = None
         self.fullname = None
         self.filename = None
         self.fullsize = None
-        getLogger().info('[%s] session created' % self.sid)
+        self.logger.info('[%s] session created' % self.sid)
 
     @property
     def tmpname(self):
@@ -31,7 +38,7 @@ class Session(object):
 
     @property
     def issender(self):
-        return not (self.sid >> 7) ^ (g.sessionpool.side >> 7)
+        return not (self.sid >> 7) ^ (self.env.side >> 7)
 
     def resetovertime(self):
         self.overtime = time() + Session.TIMEOUT
@@ -44,16 +51,16 @@ class Session(object):
         self.filename = os.path.basename(fullname)
         self.fileproc = FileReader(fullname)
         self.fullsize = len(self.fileproc)
-        g.sender.send(wrap(self.sid, SSN))
-        getLogger().info('[%s] begin send file [%s]' % (self.sid, fullname))
+        self.sender.send(wrap(self.sid, SSN))
+        self.logger.info('[%s] begin send file [%s]' % (self.sid, fullname))
 
     def receivefile(self, filename, size):
         self.filename = filename
-        self.fullname = os.path.join(g.sessionpool.targetpath, self.filename)
+        self.fullname = os.path.join(self.env.receive_path, self.filename)
         self.fullsize = size
         if os.path.exists(self.fullname):
             self.close()
-            g.sessionpool.onexists(self)
+            self.sessionpool.onexists(self)
             return False
         self.fileproc = FileWriter(self.tmpname)
         return True
@@ -68,7 +75,7 @@ class Session(object):
         return True
 
     def readblock(self, blocknum):
-        getLogger().debug('[%s] Read file block [#%s]' % (self.sid, blocknum))
+        self.logger.debug('[%s] Read file block [#%s]' % (self.sid, blocknum))
         return self.fileproc.read(blocknum * Session.BLOCK, Session.BLOCK)
 
     def completereceive(self):
@@ -78,7 +85,7 @@ class Session(object):
             return True
         else:
             self.close()
-            getLogger().error('[%s] Receive file length error' % self.sid)
+            self.logger.error('[%s] Receive file length error' % self.sid)
             os.remove(self.tmpname)
             return False
 
@@ -90,13 +97,13 @@ class Session(object):
             try:
                 data = func(self, stream)
                 if isinstance(data, bytes) and len(data) >= DATASTARTPOINT:
-                    getLogger().debug('[%s] Process[%s] write %d bytes' % (self.sid, desc, len(data)))
-                    g.sender.send(data)
+                    self.logger.debug('[%s] Process[%s] write %d bytes' % (self.sid, desc, len(data)))
+                    self.sender.send(data)
             except:
-                getLogger().error(traceback.format_exc())
+                self.logger.error(traceback.format_exc())
                 self.close()
         else:
-            getLogger().error('Unknow command code [%s]' % command)
+            self.logger.error('Unknow command code [%s]' % command)
             self.close()
 
     def close(self):
@@ -104,4 +111,4 @@ class Session(object):
             self.fileproc.close()
             self.fileproc = None
         self.settimeout()
-        getLogger().info('[%s] session closed' % self.sid)
+        self.logger.info('[%s] session closed' % self.sid)
