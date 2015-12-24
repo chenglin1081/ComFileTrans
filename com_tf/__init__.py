@@ -8,7 +8,7 @@ from .lib.env import Environment
 from .lib.log import Log
 from .client import initialize, close, transfer_files
 
-version = '1.0.1'
+version = '1.0.2'
 env = Environment()
 log = Log(level=logging.INFO, print_std='--print' in [a.lower() for a in sys.argv])
 
