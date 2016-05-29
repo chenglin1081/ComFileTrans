@@ -13,7 +13,7 @@ class Com(metaclass=Singleton):
         self.env = Environment()
         self.logger = Log().logger
         self.timeout = timeout
-        self.com = Serial(port=self.env.port, baudrate=self.env.rate, timeout=self.timeout)
+        self.com = Serial(port='COM' + str(self.env.port), baudrate=self.env.rate, timeout=self.timeout)
         self.logger.info('create device and open it')
         self.read_lock = RLock()
         self.write_lock = RLock()
